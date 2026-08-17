@@ -10,6 +10,7 @@ type BookActionPermissionSource = Pick<
   | 'canDeleteBook'
   | 'canBulkResetGrimmoryReadProgress'
   | 'canBulkResetKoReaderReadProgress'
+  | 'canMoveOrganizeFiles'
 >;
 
 interface BookActionPermissions {
@@ -19,6 +20,7 @@ interface BookActionPermissions {
   readonly canDeleteBook: boolean;
   readonly canResetGrimmoryProgress: boolean;
   readonly canResetKoreaderProgress: boolean;
+  readonly canOrganizeFiles: boolean;
 }
 
 export function bookActionPermissions(
@@ -32,6 +34,7 @@ export function bookActionPermissions(
     canDeleteBook: admin || !!permissions?.canDeleteBook,
     canResetGrimmoryProgress: admin || !!permissions?.canBulkResetGrimmoryReadProgress,
     canResetKoreaderProgress: admin || !!permissions?.canBulkResetKoReaderReadProgress,
+    canOrganizeFiles: admin || !!permissions?.canMoveOrganizeFiles,
   };
 }
 
