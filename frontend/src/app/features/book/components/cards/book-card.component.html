@@ -42,14 +42,19 @@
         <span
           class="absolute inset-x-0 bottom-0 z-20 h-1 bg-black/45"
           [appTooltip]="progressTooltip()"
-          role="progressbar"
-          [attr.aria-valuenow]="progressPercentage()"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          [attr.aria-label]="progressTooltip()"
           data-testid="progress"
         >
-          <i class="block h-full rounded-r-sm bg-primary" [style.width.%]="progressPercentage()"></i>
+          <progress
+            class="sr-only"
+            [value]="progressPercentage()!"
+            max="100"
+            [attr.aria-label]="progressTooltip()"
+          ></progress>
+          <i
+            class="block h-full rounded-r-sm bg-primary"
+            [style.width.%]="progressPercentage()"
+            aria-hidden="true"
+          ></i>
         </span>
       }
 

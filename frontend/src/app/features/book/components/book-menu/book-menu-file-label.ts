@@ -16,7 +16,9 @@ export function bookFileLabelParts(file: BookFileResponse): BookFileLabelParts {
     base = base.slice(0, -(ext.length + 1));
   }
 
-  const suffix = `${ext ? `.${ext}` : ''}${size ? ` (${size})` : ''}`;
+  const extensionSuffix = ext ? `.${ext}` : '';
+  const sizeSuffix = size ? ` (${size})` : '';
+  const suffix = `${extensionSuffix}${sizeSuffix}`;
   const full = `${base}${suffix}`.trim();
   return {base: base || name, suffix, full: full || name};
 }
@@ -32,6 +34,13 @@ function fileSizeLabel(fileSizeKb: number | undefined): string | null {
     size /= 1024;
     unit += 1;
   }
-  const decimals = size >= 100 ? 0 : size >= 10 ? 1 : 2;
+  let decimals: number;
+  if (size >= 100) {
+    decimals = 0;
+  } else if (size >= 10) {
+    decimals = 1;
+  } else {
+    decimals = 2;
+  }
   return `${size.toFixed(decimals)} ${units[unit]}`;
 }
