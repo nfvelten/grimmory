@@ -348,7 +348,7 @@ export class BookCardComponent {
       return;
     }
     event.preventDefault();
-    if (this.consumeLongPress()) {
+    if (this.longPressFired) {
       return;
     }
     this.menuRequested.emit(contextMenuRequest(event));
