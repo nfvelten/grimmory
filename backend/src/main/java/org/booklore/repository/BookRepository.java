@@ -80,9 +80,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     @Query("SELECT b.id FROM BookEntity b WHERE b.libraryPath.id IN :libraryPathIds AND (b.deleted IS NULL OR b.deleted = false)")
     List<Long> findAllBookIdsByLibraryPathIdIn(@Param("libraryPathIds") Collection<Long> libraryPathIds);
 
-    // Only ToOne paths in EntityGraph; collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
-    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "library"})
-    @Query("SELECT b FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false)")
+    // Nested to-one path metadata.comicMetadata is not honoured by @EntityGraph (produces no join,
+    // leaving comicMetadata lazy and causing an N+1 SELECT per book) — fetched explicitly instead.
+    // collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
+    @Query("SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata JOIN FETCH b.library WHERE (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadata();
 
     // Only ToOne paths in EntityGraph; collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
@@ -116,9 +117,10 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     @Query("SELECT b FROM BookEntity b WHERE b.library.id = :libraryId AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllForDuplicateDetection(@Param("libraryId") Long libraryId);
 
-    // Only ToOne paths in EntityGraph; collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
-    @EntityGraph(attributePaths = {"metadata", "metadata.comicMetadata", "library"})
-    @Query("SELECT b FROM BookEntity b WHERE b.library.id IN :libraryIds AND (b.deleted IS NULL OR b.deleted = false)")
+    // Nested to-one path metadata.comicMetadata is not honoured by @EntityGraph (produces no join,
+    // leaving comicMetadata lazy and causing an N+1 SELECT per book) — fetched explicitly instead.
+    // collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
+    @Query("SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata JOIN FETCH b.library WHERE b.library.id IN :libraryIds AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadataByLibraryIds(@Param("libraryIds") Collection<Long> libraryIds);
 
     @EntityGraph(attributePaths = {

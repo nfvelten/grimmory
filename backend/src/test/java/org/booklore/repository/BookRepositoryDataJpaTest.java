@@ -131,4 +131,65 @@ class BookRepositoryDataJpaTest {
         assertThat(bookEntity.getId()).isEqualTo(book.getId());
         assertThat(bookEntity.getPrimaryBookFile()).isNotNull();
     }
+
+    @Test
+    void findAllWithMetadata_doesNotIssueOneSelectPerBookForComicMetadata() {
+        LibraryEntity library = LibraryEntity.builder()
+                .name("Test Library")
+                .icon("book")
+                .watch(false)
+                .formatPriority(List.of(BookFileType.EPUB, BookFileType.PDF))
+                .build();
+        entityManager.persist(library);
+        entityManager.flush();
+
+        LibraryPathEntity libraryPath = LibraryPathEntity.builder()
+                .library(library)
+                .path("/test/path")
+                .build();
+        entityManager.persist(libraryPath);
+        entityManager.flush();
+
+        int bookCount = 20;
+        for (int i = 0; i < bookCount; i++) {
+            BookEntity book = BookEntity.builder()
+                    .library(library)
+                    .libraryPath(libraryPath)
+                    .addedOn(Instant.now())
+                    .deleted(false)
+                    .build();
+            entityManager.persist(book);
+            entityManager.flush();
+
+            BookMetadataEntity metadata = BookMetadataEntity.builder()
+                    .book(book)
+                    .title("Book " + i)
+                    .build();
+            entityManager.persist(metadata);
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        org.hibernate.stat.Statistics statistics = entityManager.getEntityManagerFactory()
+                .unwrap(org.hibernate.SessionFactory.class)
+                .getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        List<BookEntity> books = bookRepository.findAllWithMetadata();
+        for (BookEntity book : books) {
+            // No comic_metadata row exists for any book — accessing it is what previously
+            // triggered a per-book SELECT (see #2482).
+            assertThat(book.getMetadata().getComicMetadata()).isNull();
+        }
+
+        long statementCount = statistics.getPrepareStatementCount();
+
+        TestTransaction.end();
+
+        assertThat(books).hasSize(bookCount);
+        assertThat(statementCount)
+                .as("statement count must not scale with the number of books")
+                .isLessThan(bookCount);
+    }
 }
