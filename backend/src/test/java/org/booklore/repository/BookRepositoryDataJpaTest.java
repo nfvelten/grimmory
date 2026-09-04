@@ -132,7 +132,10 @@ class BookRepositoryDataJpaTest {
         assertThat(bookEntity.getPrimaryBookFile()).isNotNull();
     }
 
-    private List<Long> persistLibraryWithBooks(int bookCount) {
+    private record LibraryFixture(Long libraryId, List<Long> bookIds) {
+    }
+
+    private LibraryFixture persistLibraryWithBooks(int bookCount) {
         LibraryEntity library = LibraryEntity.builder()
                 .name("Test Library")
                 .icon("book")
@@ -169,7 +172,7 @@ class BookRepositoryDataJpaTest {
         }
         entityManager.flush();
         entityManager.clear();
-        return bookIds;
+        return new LibraryFixture(library.getId(), bookIds);
     }
 
     private org.hibernate.stat.Statistics resetStatistics() {
@@ -182,7 +185,10 @@ class BookRepositoryDataJpaTest {
     }
 
     // No comic_metadata row exists for any book in these fixtures — accessing it is what
-    // previously triggered a per-book SELECT (see #2482).
+    // previously triggered a per-book SELECT (see #2482). Each fetch plan below issues exactly
+    // one SELECT regardless of book count, so the statement count is asserted against a fixed
+    // upper bound rather than one derived from bookCount.
+    private static final long MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN = 2;
 
     @Test
     void findAllWithMetadata_doesNotIssueOneSelectPerBookForComicMetadata() {
@@ -201,16 +207,16 @@ class BookRepositoryDataJpaTest {
         assertThat(books).hasSize(bookCount);
         assertThat(statementCount)
                 .as("statement count must not scale with the number of books")
-                .isLessThan(bookCount);
+                .isLessThanOrEqualTo(MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN);
     }
 
     @Test
     void findAllWithMetadataByIds_doesNotIssueOneSelectPerBookForComicMetadata() {
         int bookCount = 20;
-        List<Long> bookIds = persistLibraryWithBooks(bookCount);
+        LibraryFixture fixture = persistLibraryWithBooks(bookCount);
         org.hibernate.stat.Statistics statistics = resetStatistics();
 
-        List<BookEntity> books = bookRepository.findAllWithMetadataByIds(new java.util.HashSet<>(bookIds));
+        List<BookEntity> books = bookRepository.findAllWithMetadataByIds(new java.util.HashSet<>(fixture.bookIds()));
         for (BookEntity book : books) {
             assertThat(book.getMetadata().getComicMetadata()).isNull();
         }
@@ -221,7 +227,27 @@ class BookRepositoryDataJpaTest {
         assertThat(books).hasSize(bookCount);
         assertThat(statementCount)
                 .as("statement count must not scale with the number of books")
-                .isLessThan(bookCount);
+                .isLessThanOrEqualTo(MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN);
+    }
+
+    @Test
+    void findAllWithMetadataByLibraryIds_doesNotIssueOneSelectPerBookForComicMetadata() {
+        int bookCount = 20;
+        LibraryFixture fixture = persistLibraryWithBooks(bookCount);
+        org.hibernate.stat.Statistics statistics = resetStatistics();
+
+        List<BookEntity> books = bookRepository.findAllWithMetadataByLibraryIds(List.of(fixture.libraryId()));
+        for (BookEntity book : books) {
+            assertThat(book.getMetadata().getComicMetadata()).isNull();
+        }
+
+        long statementCount = statistics.getPrepareStatementCount();
+        TestTransaction.end();
+
+        assertThat(books).hasSize(bookCount);
+        assertThat(statementCount)
+                .as("statement count must not scale with the number of books")
+                .isLessThanOrEqualTo(MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN);
     }
 
     @Test
@@ -242,6 +268,6 @@ class BookRepositoryDataJpaTest {
         assertThat(books).hasSize(bookCount);
         assertThat(statementCount)
                 .as("statement count must not scale with the number of books")
-                .isLessThan(bookCount);
+                .isLessThanOrEqualTo(MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN + 1); // +1 for the paging COUNT query
     }
 }
