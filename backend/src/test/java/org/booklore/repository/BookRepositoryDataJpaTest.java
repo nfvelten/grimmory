@@ -231,6 +231,34 @@ class BookRepositoryDataJpaTest {
     }
 
     @Test
+    void findAllWithMetadataByIds_includesBooksWithNullLibraryPath() {
+        LibraryEntity library = LibraryEntity.builder()
+                .name("Test Library")
+                .icon("book")
+                .watch(false)
+                .formatPriority(List.of(BookFileType.EPUB, BookFileType.PDF))
+                .build();
+        entityManager.persist(library);
+        entityManager.flush();
+
+        BookEntity book = BookEntity.builder()
+                .library(library)
+                .libraryPath(null)
+                .addedOn(Instant.now())
+                .deleted(false)
+                .build();
+        entityManager.persist(book);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<BookEntity> books = bookRepository.findAllWithMetadataByIds(java.util.Set.of(book.getId()));
+        TestTransaction.end();
+
+        assertThat(books).hasSize(1);
+        assertThat(books.get(0).getLibraryPath()).isNull();
+    }
+
+    @Test
     void findAllWithMetadataByLibraryIds_doesNotIssueOneSelectPerBookForComicMetadata() {
         int bookCount = 20;
         LibraryFixture fixture = persistLibraryWithBooks(bookCount);
@@ -269,5 +297,34 @@ class BookRepositoryDataJpaTest {
         assertThat(statementCount)
                 .as("statement count must not scale with the number of books")
                 .isLessThanOrEqualTo(MAX_STATEMENTS_FOR_FIXED_FETCH_PLAN + 1); // +1 for the paging COUNT query
+    }
+
+    @Test
+    void findAllWithMetadataPage_includesBooksWithNullLibraryPath() {
+        LibraryEntity library = LibraryEntity.builder()
+                .name("Test Library")
+                .icon("book")
+                .watch(false)
+                .formatPriority(List.of(BookFileType.EPUB, BookFileType.PDF))
+                .build();
+        entityManager.persist(library);
+        entityManager.flush();
+
+        BookEntity book = BookEntity.builder()
+                .library(library)
+                .libraryPath(null)
+                .addedOn(Instant.now())
+                .deleted(false)
+                .build();
+        entityManager.persist(book);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<BookEntity> books = bookRepository.findAllWithMetadataPage(
+                org.springframework.data.domain.PageRequest.of(0, 10)).getContent();
+        TestTransaction.end();
+
+        assertThat(books).hasSize(1);
+        assertThat(books.get(0).getLibraryPath()).isNull();
     }
 }

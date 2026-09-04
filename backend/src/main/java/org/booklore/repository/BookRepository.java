@@ -89,7 +89,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
     // Nested to-one path metadata.comicMetadata is not honoured by @EntityGraph (produces no join,
     // leaving comicMetadata lazy and causing an N+1 SELECT per book) — fetched explicitly instead.
     // collections (authors, categories, moods, tags, shelves, bookFiles) loaded via @BatchSize.
-    @Query("SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata JOIN FETCH b.libraryPath JOIN FETCH b.library WHERE b.id IN :bookIds AND (b.deleted IS NULL OR b.deleted = false)")
+    @Query("SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata LEFT JOIN FETCH b.libraryPath JOIN FETCH b.library WHERE b.id IN :bookIds AND (b.deleted IS NULL OR b.deleted = false)")
     List<BookEntity> findAllWithMetadataByIds(@Param("bookIds") Set<Long> bookIds);
 
     @EntityGraph(attributePaths = {
@@ -488,7 +488,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long>, JpaSpec
      */
     // Nested to-one path metadata.comicMetadata is not honoured by @EntityGraph (produces no join,
     // leaving comicMetadata lazy and causing an N+1 SELECT per book) — fetched explicitly instead.
-    @Query(value = "SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata JOIN FETCH b.libraryPath JOIN FETCH b.library WHERE (b.deleted IS NULL OR b.deleted = false)",
+    @Query(value = "SELECT b FROM BookEntity b LEFT JOIN FETCH b.metadata m LEFT JOIN FETCH m.comicMetadata LEFT JOIN FETCH b.libraryPath JOIN FETCH b.library WHERE (b.deleted IS NULL OR b.deleted = false)",
            countQuery = "SELECT COUNT(b) FROM BookEntity b WHERE (b.deleted IS NULL OR b.deleted = false)")
     Page<BookEntity> findAllWithMetadataPage(Pageable pageable);
 
